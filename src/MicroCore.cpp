@@ -344,6 +344,7 @@ MicroCore::get_tx_hash_from_output_pubkey(const public_key& output_pubkey,
     list<transaction> txs {blk.miner_tx};
     list<crypto::hash> missed_txs;
 
+    // blockchain 클래스에 지정되어있는 get_transactions를 이용
     if (!m_blockchain_storage.get_transactions(blk.tx_hashes, txs, missed_txs))
     {
         cerr << "Cant find transcations in block: " << block_height << endl;

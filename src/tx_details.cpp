@@ -113,10 +113,9 @@ namespace xmreg
         // if no, then skip
         if (pub_tx_key == null_pkey)
         {
+
             return our_outputs;
         }
-
-
 
         // get tx payment id
         crypto::hash payment_id;
@@ -179,8 +178,15 @@ namespace xmreg
                               pubkey);
 
             // get tx output public key
+            // 이부분이 추후에 링 멤버로 포함이된다.
             const txout_to_key tx_out_to_key
                     = boost::get<txout_to_key>(tx.vout[i].target);
+
+            // 작성중
+            // crypto::hash tx_hash = cryptonote::get_transaction_hash(tx);
+            // cout << epee::string_tools::pod_to_hex(tx_hash) << endl;
+            //
+            // cout << "On height : " << block_height <<  ", pubkey : " << tx_out_to_key.key << endl;
 
             // check if generated public key matches the current output's key
             bool mine_output = (tx_out_to_key.key == pubkey);

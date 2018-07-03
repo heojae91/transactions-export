@@ -55,7 +55,9 @@ namespace xmreg
                 ("all-outputs",  value<bool>()->default_value(false)->implicit_value(true),
                  "save all outputs, whether they are ours or not")
                 ("all-key-images",  value<bool>()->default_value(false)->implicit_value(true),
-                "save all key_images, whether they are ours or not, with referenced output public keys");
+                "save all key_images, whether they are ours or not, with referenced output public keys")
+                ("txid,x", value<string>()->default_value("None"),
+                 "enter txid for getting inputs");
 
 
         store(command_line_parser(acc, avv)

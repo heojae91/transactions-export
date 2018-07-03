@@ -51,6 +51,7 @@ auto stagenet_opt        = opts.get_option<bool>("stagenet");
 auto ring_members_opt    = opts.get_option<bool>("ring-members");
 auto all_outputs_opt     = opts.get_option<bool>("all-outputs");
 auto all_key_images_opt  = opts.get_option<bool>("all-key-images");
+auto txid_input_opt      = opts.get_option<string>("txid");
 
 
 // get the program command line options, or
@@ -61,6 +62,7 @@ string viewkey_str   = viewkey_opt ? *viewkey_opt
                       : "9c2edec7636da3fbb343931d6c3d6e11bcd8042ff7e11de98a8d364f31976c04";
 string spendkey_str  = spendkey_opt ? *spendkey_opt
                       : "";
+string txid          = txid_input_opt ? *txid_input_opt : "";
 size_t start_height  = start_height_opt ? *start_height_opt : 0;
 size_t stop_height   = *stop_height_opt;
 size_t no_of_blocks  = *no_of_blocks_opt;
@@ -70,14 +72,12 @@ string out_csv_file  = *out_csv_file_opt;
 string out_csv_file2 = *out_csv_file2_opt;
 string out_csv_file3 = *out_csv_file3_opt;
 string out_csv_file4 = *out_csv_file4_opt;
-
 bool testnet         = *testnet_opt;
 bool stagenet        = *stagenet_opt;
 bool ring_members    = *ring_members_opt ;
 bool all_outputs     = *all_outputs_opt;
 bool all_key_images  = *all_key_images_opt;
 bool SPEND_KEY_GIVEN = (spendkey_str.empty() ? false : true);
-
 
 if (testnet && stagenet)
 {
@@ -139,10 +139,11 @@ if (start_height > height)
     cerr << "Given height is greater than blockchain height" << '\n';
     return EXIT_FAILURE;
 }
+// height값에 따라서 어느정도까지 진행할것인가를 결정한다. 명시되었을 경우에는 stop_height +1까지 하고 아닐경우에는
+// 현재 블록체인의 높이까지 이용
 
 
-
-
+// 스타트데이트를 입력하는 경우에만 적용
 if (start_date_opt)
 {
     // if we gave starting date use the date to
@@ -181,7 +182,7 @@ if (start_date_opt)
 
 
 cryptonote::block blk;
-
+// 시작 높이 옵션을 적용하였을 경우 (-t)
 if (!mcore.get_block_by_height(start_height, blk))
 {
     cerr << "Cant get block by date: " << start_date << '\n';
@@ -195,6 +196,7 @@ print("Search for ring members: {:s}\n", (ring_members ? "True" : "False"));
 // parse string representing given monero address
 cryptonote::address_parse_info address_info;
 
+// 주소를 입력받았을 경우 여기서 해결
 if (!get_account_address_from_str(address_info,  nettype, address_str))
 {
     cerr << "Cant parse string address: " << address_str << '\n';
@@ -233,7 +235,7 @@ if (SPEND_KEY_GIVEN)
 }
 
 
-// lets check our keys
+// 키들을 확인하는 부분. 주소와 프라이빗 뷰키 + 스팬드키 이용
 cout << '\n'
      << "address          : " << xmreg::print_address(address_info, nettype) << '\n'
      << "private view key : "  << prv_view_key << '\n';
@@ -245,7 +247,7 @@ else
 
 cout << '\n';
 
-
+// 아웃풋 csv 파일을 osv_os로 아웃풋스트림 만들어주기
 unique_ptr<csv::ofstream> csv_os(new csv::ofstream {out_csv_file.c_str()});
 
 if (!csv_os->is_open())
@@ -304,7 +306,7 @@ if (all_key_images)
 }
 
 
-
+// 1000개의 블록씩 조사하는것
 // show command line output for every i-th block
 uint64_t EVERY_ith_BLOCK {1000};
 
@@ -357,6 +359,7 @@ for (uint64_t i = start_height; i < height; ++i)
 
     // show every nth output, just to give
     // a console some break
+    // 여기서 1000개마다 한번씩 프린트 찍어줌
     if (i % EVERY_ith_BLOCK == 0)
         print("Analysing block {:08d}/{:08d} - date {:s}\n", i, height, blk_time);
 
@@ -383,9 +386,12 @@ for (uint64_t i = start_height; i < height; ++i)
         {
             try
             {
+              // 작성중
                 // output only our outputs
                 found_outputs = xmreg::get_belonging_outputs(
                         blk, tx, address, prv_view_key, i);
+                // sleep(1);
+                // printf("finished\n");
             }
             catch (std::exception const& e)
             {
@@ -648,6 +654,7 @@ for (uint64_t i = start_height; i < height; ++i)
                          << ", tx hash: " << tx_hash << '\n';
 
                     *csv_os2 << blk_time << i
+                    // cout << blk_time << i
                              << epee::string_tools::pod_to_hex(tx_hash)
                              << epee::string_tools::pod_to_hex(it->first)
                              << epee::string_tools::pod_to_hex(tx_in_to_key.k_image)
