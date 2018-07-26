@@ -13,6 +13,8 @@
 #include <tuple>
 #include <type_traits>
 
+#define RINGCT_BASE 1220517
+
 using boost::filesystem::path;
 
 using namespace fmt;
@@ -89,7 +91,6 @@ const cryptonote::network_type nettype = testnet ?
       cryptonote::network_type::TESTNET : stagenet ?
       cryptonote::network_type::STAGENET : cryptonote::network_type::MAINNET;
 
-
 path blockchain_path;
 
 if (!xmreg::get_blockchain_path(bc_path_opt, blockchain_path, nettype))
@@ -142,6 +143,8 @@ if (start_height > height)
 // height값에 따라서 어느정도까지 진행할것인가를 결정한다. 명시되었을 경우에는 stop_height +1까지 하고 아닐경우에는
 // 현재 블록체인의 높이까지 이용
 
+// 작성
+vector<xmreg::input_data> selected_inputs;
 
 // 스타트데이트를 입력하는 경우에만 적용
 if (start_date_opt)
@@ -183,6 +186,9 @@ if (start_date_opt)
 
 cryptonote::block blk;
 // 시작 높이 옵션을 적용하였을 경우 (-t)
+if (start_height < RINGCT_BASE)
+  cout << "It includes Non-RingCT transactions!" << endl;
+
 if (!mcore.get_block_by_height(start_height, blk))
 {
     cerr << "Cant get block by date: " << start_date << '\n';
@@ -265,7 +271,6 @@ if (!csv_os->is_open())
        << "Output_spend"
        << NEWLINE;
 
-
 unique_ptr<csv::ofstream> csv_os2;
 
 if (ring_members)
@@ -335,6 +340,7 @@ unordered_map<crypto::public_key, tuple<uint64_t, vector<uint64_t>>> ring_member
 vector<crypto::key_image> key_images_gen;
 
 size_t blk_counter {0};
+int iter = 0;
 
 for (uint64_t i = start_height; i < height; ++i)
 {
@@ -377,11 +383,12 @@ for (uint64_t i = start_height; i < height; ++i)
 
     for (const cryptonote::transaction& tx : txs)
     {
+      // xmreg::get_transaction_outputs(tx, i);
+      // printf("finished\n");
 
         crypto::hash tx_hash = cryptonote::get_transaction_hash(tx);
 
         vector<xmreg::transfer_details> found_outputs;
-
         if (all_outputs == false)
         {
             try
@@ -390,8 +397,8 @@ for (uint64_t i = start_height; i < height; ++i)
                 // output only our outputs
                 found_outputs = xmreg::get_belonging_outputs(
                         blk, tx, address, prv_view_key, i);
-                // sleep(1);
-                // printf("finished\n");
+
+                // bool tx_in_block = xmreg::find_tx_by_txid();
             }
             catch (std::exception const& e)
             {
@@ -542,15 +549,15 @@ for (uint64_t i = start_height; i < height; ++i)
 
 
                 // from  bool core::check_tx_inputs_keyimages_domain(const transaction& tx) const
-                if (!(rct::scalarmultKey(rct::ki2rct(tx_in_to_key.k_image),
-                                         rct::curveOrder()) == rct::identity()))
-                {
-                    cerr << "Found key image with wrong domain: "
-                         << epee::string_tools::pod_to_hex(tx_in_to_key.k_image)
-                         << " in tx: " << epee::string_tools::pod_to_hex(tx_hash)
-                         << endl;
-                    return EXIT_SUCCESS;
-                }
+                // if (!(rct::scalarmultKey(rct::ki2rct(tx_in_to_key.k_image),
+                //                          rct::curveOrder()) == rct::identity()))
+                // {
+                //     cerr << "Found key image with wrong domain: "
+                //          << epee::string_tools::pod_to_hex(tx_in_to_key.k_image)
+                //          << " in tx: " << epee::string_tools::pod_to_hex(tx_hash)
+                //          << endl;
+                //     return EXIT_SUCCESS;
+                // }
 
                 // get absolute offsets of mixins
                 std::vector<uint64_t> absolute_offsets
@@ -573,15 +580,17 @@ for (uint64_t i = start_height; i < height; ++i)
                 }
 
                 uint64_t ring_size = absolute_offsets.size();
-
                 // mixin counter
                 size_t count = 0;
 
+                count = 0;
                 // for each found output public key check if its ours or not
                 for (const uint64_t& abs_offset: absolute_offsets)
                 {
                     // get basic information about mixn's output
                     cryptonote::output_data_t output_data = mixin_outputs.at(count);
+                    // cout << "value of count : " << count << endl;
+                    // sleep(1);
 
                     // before going to the mysql, check our known outputs cash
                     // if the key exists. Its much faster than going to mysql
@@ -624,6 +633,37 @@ for (uint64_t i = start_height; i < height; ++i)
                             continue;
                         }
 
+                        string firstPubkey = "ea62ca2e41afffd35f0b3e648ddb030fc4da8bd0598099e47e833a7db540ee2e";
+                        string secondPubkey = "d7af748693b87e0dd6665a89050cad23c9357d7b3d104c5cb056b0c70aca43f0";
+                       
+                        cout << "key image : " << epee::string_tools::pod_to_hex(tx_in_to_key.k_image) << endl;
+
+                        cout << "output data : " << epee::string_tools::pod_to_hex(output_data.pubkey) << endl;
+                        if (epee::string_tools::pod_to_hex(output_data.pubkey) == firstPubkey) {
+                          cout << "YES!" << endl;
+                        }
+
+                        /* 빈도확인부분 */
+/*
+                        if (epee::string_tools::pod_to_hex(tx_hash) == "0782913e9a68da7a9bef667206050c0b96c496f35d3dd3925614b83048b9f345")
+                        // if (epee::string_tools::pod_to_hex(tx_hash) == "e480c10ed07fa06b03de4e6fe2cd6e534da0b0337b626010534ac551abcc5d2e")
+                        {
+                          // cout << "PubKey : " << epee::string_tools::pod_to_hex(output_data.pubkey) << " first appeared in " \
+                          //      << output_data.height << "th block with Tx Hash : " << epee::string_tools::pod_to_hex(tx_out_idx.first) << endl;
+                          selected_inputs.push_back(
+                            xmreg::input_data {
+                              output_data.height,
+                              i,
+                              epee::string_tools::pod_to_hex(tx_out_idx.first),
+                              epee::string_tools::pod_to_hex(output_data.pubkey)
+                            }
+                          );
+                          printf("%d\n", iter);
+                          xmreg::print_all_tx_data(selected_inputs[iter]);
+                          iter++;
+                        }
+*/
+                        // 필요한 내용 : i (블록높이), tx_hash(트랜잭션해쉬), output_data(사용된 공개키(pubkey), 높이(height)), abs_offset(처음나온곳),
                         *csv_os4 << blk_time << i << epee::string_tools::pod_to_hex(tx_hash)
                                  << epee::string_tools::pod_to_hex(tx_in_to_key.k_image)
                                  << ring_size
@@ -654,7 +694,6 @@ for (uint64_t i = start_height; i < height; ++i)
                          << ", tx hash: " << tx_hash << '\n';
 
                     *csv_os2 << blk_time << i
-                    // cout << blk_time << i
                              << epee::string_tools::pod_to_hex(tx_hash)
                              << epee::string_tools::pod_to_hex(it->first)
                              << epee::string_tools::pod_to_hex(tx_in_to_key.k_image)
@@ -674,7 +713,110 @@ for (uint64_t i = start_height; i < height; ++i)
     } // for (const cryptonote::transaction& tx : txs)
 
 } // for (uint64_t i = 0; i < height; ++i)
+cout << "END" << endl;
 
+/* 여기서부터 클러스터링 */
+
+
+/* 여기서부터 빈도확인부분 */
+/*
+start_height = selected_inputs[0].first_block;
+// start_height = 1389812;
+uint64_t fin_height = selected_inputs[0].tx_idx;
+// uint64_t fin_height = core_storage->get_current_blockchain_height();
+// uint64_t fin_height = 1390468;
+cout << "FINHEINGHT " << fin_height << endl;
+// uint64_t fin_height = start_height + 200000;
+for (uint64_t blk_idx = start_height; blk_idx < fin_height; blk_idx++)
+{
+
+  try {
+    blk = core_storage->get_db().get_block_from_height(blk_idx);
+  }
+  catch (std::exception& e)
+  {
+      cerr << e.what() << '\n';
+      continue;
+  }
+  string blk_time = xmreg::timestamp_to_str(blk.timestamp);
+
+  if (blk_idx % EVERY_ith_BLOCK == 0)
+      print("Analysing block {:08d}/{:08d} - date {:s}\n", blk_idx, fin_height, blk_time);
+
+  // get all transactions in the block found
+  // initialize the first list with transaction for solving
+  // the block i.e. coinbase.
+  list<cryptonote::transaction> txs {blk.miner_tx};
+  list<crypto::hash> missed_txs;
+
+  if (!mcore.get_core().get_transactions(blk.tx_hashes, txs, missed_txs))
+  {
+      cerr << "Cant find transactions in block: " << height << '\n';
+      return EXIT_FAILURE;
+  }
+
+  for (const cryptonote::transaction& tx : txs)
+  {
+    for (uint64_t data_idx = 0; data_idx < selected_inputs.size(); data_idx++)
+    {
+      // cout << selected_inputs[data_idx].pubkey << endl;
+      // get_transaction_inputs(tx, selected_inputs[data_idx], core_storage, key_images_gen, blk_idx);
+
+      size_t input_size = tx.vin.size();
+
+      for (size_t i = 0; i < input_size; ++i)
+      {
+        // cout << tx.vin[i].type() != typeid(cryptonote::txin_to_key)<< endl;
+        if (tx.vin[i].type() != typeid(cryptonote::txin_to_key))
+          continue;
+
+        const cryptonote::txin_to_key& tx_in_to_key
+                = boost::get<cryptonote::txin_to_key>(tx.vin[i]);
+
+        std::vector<crypto::key_image>::iterator it;
+
+        it = find(key_images_gen.begin(), key_images_gen.end(),
+                  tx_in_to_key.k_image);
+
+        uint64_t xmr_amount = tx_in_to_key.amount;
+        std::vector<uint64_t> absolute_offsets
+                = cryptonote::relative_output_offsets_to_absolute(
+                        tx_in_to_key.key_offsets);
+
+        std::vector<cryptonote::output_data_t> mixin_outputs;
+        try
+        {
+            core_storage->get_db().get_output_key(xmr_amount,
+                                                  absolute_offsets,
+                                                  mixin_outputs);
+        }
+        catch (const cryptonote::OUTPUT_DNE& e)
+        {
+            cerr << "Mixins key images not found" << '\n';
+            continue;
+        }
+        // cout << mixin_outputs.size() << endl;
+        uint64_t ring_size = absolute_offsets.size();
+        // mixin counter
+        size_t count = 0;
+
+        for (count = 0; count < mixin_outputs.size(); count++)
+        {
+          // cout << mixin_outputs[count].pubkey << endl;
+
+          if (selected_inputs[data_idx].pubkey == epee::string_tools::pod_to_hex(mixin_outputs[count].pubkey))
+            selected_inputs[data_idx].freq++;
+        }
+        count = 0;
+      }
+    }
+  }
+}
+*/
+for (uint64_t data_idx = 0; data_idx < selected_inputs.size(); data_idx++)
+{
+  cout << "output frequency of " << selected_inputs[data_idx].pubkey << " is : " << selected_inputs[data_idx].freq << endl;
+}
 if (csv_os->is_open())
 {
     csv_os->close();

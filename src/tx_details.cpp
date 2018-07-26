@@ -411,6 +411,109 @@ namespace xmreg
         return true;
     }
 
+    vector<xmreg::tx_data>
+    get_transaction_inputs(const transaction& tx,
+                            input_data& id,
+                            Blockchain* core_storage,
+                            // const vector<crypto::key_image>& key_images_gen,
+                            uint64_t block_height)
+    {
+      // cryptonote::block blk;
+      //
+      // size_t input_no = tx.vin.size();
+      //
+      // for (size_t i = 0; i < input_no; ++i)
+      // {
+      //   if (tx.vin[i].type() != typeid(cryptonote::txin_to_key))
+      //     continue;
+      //
+      //     const cryptonote::txin_to_key& tx_in_to_key
+      //             = boost::get<cryptonote::txin_to_key>(tx.vin[i]);
+      //
+      //     std::vector<crypto::key_image>::iterator it;
+      //
+      //     it = find(key_images_gen.begin(), key_images_gen.end(),
+      //               tx_in_to_key.k_image);
+      //
+      //     uint64_t xmr_amount = tx_in_to_key.amount;
+      //     std::vector<uint64_t> absolute_offsets
+      //             = cryptonote::relative_output_offsets_to_absolute(
+      //                     tx_in_to_key.key_offsets);
+      //
+      //     a
+      //     std::vector<cryptonote::output_data_t> mixin_outputs;
+      //     try
+      //     {
+      //         core_storage->get_db().get_output_key(xmr_amount,
+      //                                               absolute_offsets,
+      //                                               mixin_outputs);
+      //     }
+      //     catch (const cryptonote::OUTPUT_DNE& e)
+      //     {
+      //         cerr << "Mixins key images not found" << '\n';
+      //         continue;
+      //     }
+      //     uint64_t ring_size = absolute_offsets.size();
+      //     // mixin counter
+      //     size_t count = 0;
+      //
+      //     for (count = 0; count < mixin_outputs.size(); count++)
+      //     {
+      //       cout << mixin_outputs[count].pubkey << endl;
+      //     }
+      //     count = 0;
+      // }
+
+      vector<xmreg::tx_data> my_inputs;
+      public_key pub_tx_key = get_tx_pub_key_from_extra(tx);
+
+      if (pub_tx_key == null_pkey)
+        return my_inputs;
+
+      size_t output_no = tx.vout.size();
+
+      if (output_no == 0)
+        return my_inputs;
+
+      for (size_t i = 0; i < output_no; ++i)
+      {
+          // get tx output public key
+          // 이부분이 추후에 링 멤버로 포함이된다.
+          const txout_to_key tx_out_to_key
+                  = boost::get<txout_to_key>(tx.vout[i].target);
+
+          // 작성중
+          crypto::hash tx_hash = cryptonote::get_transaction_hash(tx);
+          // cout << epee::string_tools::pod_to_hex(tx_hash) << endl;
+          // cout << "--------------------------------------------" << endl;
+          // cout << epee::string_tools::pod_to_hex(tx_out_to_key.key) << endl;
+          // cout << id.pubkey << endl;
+          // cout << "--------------------------------------------" << endl;
+
+          // if (epee::string_tools::pod_to_hex(tx_out_to_key.key) == id.pubkey)
+          if (epee::string_tools::pod_to_hex(tx_out_to_key.key) == "ff00dc60cbc599e520d33d5bbc999daf1f4e30479e558b425ef8d092809af5d5")
+          {
+            cout << "FIND!!!" << endl;
+            id.freq = id.freq + 1;
+            sleep(10);
+          }
+          cout << "On height : " << block_height <<  ", pubkey : " << epee::string_tools::pod_to_hex(tx_out_to_key.key) << endl;
+
+      } //  for (size_t i = 0; i < output_no; ++i)
+      return my_inputs;
+    }
+
+    void print_all_tx_data(input_data& txd)
+    {
+      cout << "First appeared in : " << txd.first_block << endl;
+      cout << "On block : " << txd.tx_idx << endl; // 우리가 발견한 tx_hash가 속해있는 높이
+
+      cout << "From tx_hash : " << txd.tx_hash << endl; // 거래가포함된 tx_hash
+      cout << "With pubkey : " << txd.pubkey << endl; // 거래의 pubkey
+
+      cout <<  "Frequency : " << txd.freq << endl;
+
+    }
 
 }
 

@@ -45,6 +45,24 @@ namespace xmreg
         uint64_t amount(secret_key prv_view_key) const;
     };
 
+    struct tx_data
+    {
+      int block_index;
+      string transaction_id;
+      string output_pubkey;
+    };
+    // 필요한 내용 : i (블록높이), tx_hash(트랜잭션해쉬), output_data(사용된 공개키(pubkey), 높이(height)), abs_offset(처음나온곳),
+
+    struct input_data
+    {
+      uint64_t first_block; // 처음 발견된 브록
+      uint64_t tx_idx; // 우리가 발견한 tx_hash가 속해있는 높이
+
+      string tx_hash; // 거래가포함된 tx_hash
+      string pubkey; // 거래의 pubkey
+
+      int freq = 0;
+    };
 
     ostream&
     operator<<(ostream& os, const transfer_details& dt);
@@ -72,6 +90,13 @@ namespace xmreg
     get_payment_id(const transaction& tx,
                    crypto::hash& payment_id);
 
+    vector<xmreg::tx_data>
+    get_transaction_inputs(const transaction& tx,
+                            input_data& id,
+                            // const vector<crypto::key_image>& key_images_gen,
+                            uint64_t block_height = 0);
+
+    void print_all_tx_data(input_data& txd);
 }
 
 template<>
