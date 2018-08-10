@@ -144,7 +144,28 @@ if (start_height > height)
 // 현재 블록체인의 높이까지 이용
 
 // 작성
+string firstPubkey = "ea62ca2e41afffd35f0b3e648ddb030fc4da8bd0598099e47e833a7db540ee2e";
+string secondPubkey = "d7af748693b87e0dd6665a89050cad23c9357d7b3d104c5cb056b0c70aca43f0";
+
 vector<xmreg::input_data> selected_inputs;
+vector<string> pubkey_inputs;
+
+vector<xmreg::tx_records> tx_rec;
+
+pubkey_inputs.push_back(firstPubkey);
+pubkey_inputs.push_back(secondPubkey);
+
+int pubkey_input_length = pubkey_inputs.size();
+
+for (int pubkey_idx = 0; pubkey_idx < pubkey_input_length; pubkey_idx++){
+  xmreg::tx_records r = {"","",""};
+  tx_rec.push_back(r);
+}
+cout << tx_rec.size() << endl;
+
+// 이전 트랜잭션의 트랜잭션 해쉬, 키 이미지를 저장하여 스킵하게 만들기
+string prev_tx_hash = "";
+string prev_key_image = "";
 
 // 스타트데이트를 입력하는 경우에만 적용
 if (start_date_opt)
@@ -309,7 +330,6 @@ if (all_key_images)
              << "Reference_out_index_in_the_ref_tx"
              << NEWLINE;
 }
-
 
 // 1000개의 블록씩 조사하는것
 // show command line output for every i-th block
@@ -498,6 +518,7 @@ for (uint64_t i = start_height; i < height; ++i)
 
         if (all_key_images && input_no > 0)
         {
+            cout << "HEEEEE" << endl;
             if(tx.vin[0].type() == typeid(cryptonote::txin_to_key))
                 print(" - found {:02d}  inputs in block {:08d} ({:s}) - writing to the csv\n",
                       input_no, i, blk_time);
@@ -633,15 +654,6 @@ for (uint64_t i = start_height; i < height; ++i)
                             continue;
                         }
 
-                        string firstPubkey = "ea62ca2e41afffd35f0b3e648ddb030fc4da8bd0598099e47e833a7db540ee2e";
-                        string secondPubkey = "d7af748693b87e0dd6665a89050cad23c9357d7b3d104c5cb056b0c70aca43f0";
-                       
-                        cout << "key image : " << epee::string_tools::pod_to_hex(tx_in_to_key.k_image) << endl;
-
-                        cout << "output data : " << epee::string_tools::pod_to_hex(output_data.pubkey) << endl;
-                        if (epee::string_tools::pod_to_hex(output_data.pubkey) == firstPubkey) {
-                          cout << "YES!" << endl;
-                        }
 
                         /* 빈도확인부분 */
 /*
@@ -672,6 +684,37 @@ for (uint64_t i = start_height; i < height; ++i)
                                  << epee::string_tools::pod_to_hex(tx_out_idx.first)
                                  << tx_out_idx.second
                                  << NEWLINE;
+
+                        if (prev_tx_hash != epee::string_tools::pod_to_hex(tx_hash)) {
+                          // Tx 해쉬가 이전과 다른경우. 즉, 새로운 Tx의 시작
+                          prev_tx_hash = epee::string_tools::pod_to_hex(tx_hash);
+                          prev_key_image = "";
+
+                          for (int pubkey_idx = 0; pubkey_idx < pubkey_input_length; pubkey_idx++)
+                          {
+                            tx_rec[pubkey_idx].tx_hash = "";
+                            tx_rec[pubkey_idx].key_image = "";
+                            tx_rec[pubkey_idx].pubkey = "";
+                          }
+                        }
+
+                        if (prev_key_image != epee::string_tools::pod_to_hex(tx_in_to_key.k_image)) {
+                          prev_key_image = epee::string_tools::pod_to_hex(tx_in_to_key.k_image);
+                          for (int pubkey_idx = 0; pubkey_idx < pubkey_input_length; pubkey_idx++)
+                          {
+                            tx_rec[pubkey_idx].tx_hash = "";
+                            tx_rec[pubkey_idx].key_image = "";
+                            tx_rec[pubkey_idx].pubkey = "";
+                          }
+                        }
+
+                        cout << "in transaction : " << epee::string_tools::pod_to_hex(tx_hash) << endl;
+                        cout << "key image : " << epee::string_tools::pod_to_hex(tx_in_to_key.k_image) << endl;
+                        cout << "output data : " << epee::string_tools::pod_to_hex(output_data.pubkey) << endl;
+                        if (epee::string_tools::pod_to_hex(output_data.pubkey) == firstPubkey) {
+                         cout << "YES!" << endl;
+                        }
+                        // sleep(1);
 
                         ++count;
                         continue;

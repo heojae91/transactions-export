@@ -64,6 +64,13 @@ namespace xmreg
       int freq = 0;
     };
 
+    struct tx_records
+    {
+      string tx_hash;
+      string key_image;
+      string pubkey;
+    };
+    
     ostream&
     operator<<(ostream& os, const transfer_details& dt);
 
